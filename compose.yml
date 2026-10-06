@@ -1,7 +1,8 @@
----
 version: "3"
+
 services:
- devopsdb:
+
+  devopsdb:
     image: nagarajukuruva/dbimage
     ports:
       - "3306:3306"
@@ -20,6 +21,7 @@ services:
       - devopsdb
     networks:
       - mynetwork
+
 networks:
   mynetwork:
     driver: overlay
