@@ -2,15 +2,24 @@
 version: "3"
 services:
  devopsdb:
-   container_name: devopsdb
-   image: nagarajukuruva/dbimage
-   ports:
-     - "3306:3306"
+    image: nagarajukuruva/dbimage
+    ports:
+      - "3306:3306"
+    deploy:
+      replicas: 1
+    networks:
+      - mynetwork
 
- application:
-   container_name: appcontainer
-   image: nagarajukuruva/appimage
-   ports:
-     - "1111:8080"
-   depends_on:
-     - "devopsdb"
+  application:
+    image: nagarajukuruva/appimage
+    ports:
+      - "1111:8080"
+    deploy:
+      replicas: 3
+    depends_on:
+      - devopsdb
+    networks:
+      - mynetwork
+networks:
+  mynetwork:
+    driver: overlay
