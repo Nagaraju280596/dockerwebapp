@@ -1,0 +1,67 @@
+pipeline {
+    agent {
+        node {
+            label 'prod'
+        }
+    }
+    tools {
+        maven 'mymaven'
+    }
+    stages {
+        stage('code') {
+            steps {
+                git 'https://github.com/Nagaraju280596/dockerwebapp.git'
+            }
+        }
+        stage('build'){
+            steps{
+                sh 'mvn clean install'
+            }
+        }
+        stage('code analysis'){
+           steps{
+                withSonarQubeEnv('mysonar') {
+                   sh 'mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=myroject'
+               }
+           } 
+        }
+        stage('qualitygates'){
+            steps{
+                waitForQualityGate abortPipeline: true, credentialsId: 'sonartoken'
+            }
+        }
+        stage('artifact'){
+            steps{
+                nexusArtifactUploader artifacts: [[artifactId: 'vprofile', classifier: '', file: 'target/vprofile-v2.war', type: 'war']], credentialsId: 'nexus cred', groupId: 'com.visualpathit', nexusUrl: '13.50.226.248:8081', nexusVersion: 'nexus3', protocol: 'http', repository: 'myrepo', version: 'v2'
+              }
+            }
+        stage('images'){
+            steps{
+                sh 'cp -r target Docker-app'
+                sh 'docker build -t appimage Docker-app'
+                sh 'docker build -t dbimage Docker-db'
+            }
+        }
+        stage('scan images'){
+            steps{
+                sh 'trivy image appimage >> appimage.txt'
+                sh 'trivy image dbimage >> dbimage.txt'
+            }
+        }
+        stage('push image'){
+            steps{
+                withDockerRegistry(credentialsId: 'dockerhub') {
+                    sh 'docker tag appimage:latest nagarajukuruva/appimage:latest'
+                    sh 'docker tag dbimage:latest nagarajukuruva/dbimage:latest'
+                    sh 'docker push nagarajukuruva/appimage:latest'
+                    sh 'docker push nagarajukuruva/dbimage:latest'
+                }
+            }
+        }
+        stage('deploy container'){
+            steps{
+                sh 'docker stack deploy webapp --compose-file=compose.yml'
+            }
+        }
+        }
+    }
